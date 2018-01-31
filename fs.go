@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 	"upspin.io/transports"
 	"upspin.io/upspin"
 
+	plan9 "9fans.net/go/plan9/client"
 	go9p "github.com/lionkov/go9p/p"
 	"github.com/lionkov/go9p/p/srv"
 )
@@ -370,6 +372,24 @@ func do(cfg upspin.Config, net, addr string, debug int) {
 	srv := newUpspinFS(cfg, debug)
 	if !srv.Start(srv) {
 		log.Debug.Fatal("Srv start failed")
+	}
+	if net == "service" {
+		switch runtime.GOOS {
+		case "plan9":
+			conn, err := NewServiceConn(addr)
+			if err != nil {
+				log.Debug.Fatal("DialService failed: %v", err)
+			}
+			srv.NewConn(conn)
+			select {}
+			// We only get here when Go runtime detects deadlock.
+			// Go9p does not provide a way detect when the goroutines
+			// started by srv.NewConn have terminated.
+			return
+		default:
+			net = "unix"
+			addr = plan9.Namespace() + "/" + addr
+		}
 	}
 	if err := srv.StartNetListener(net, addr); err != nil {
 		log.Debug.Fatal(err)

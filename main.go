@@ -15,11 +15,12 @@ import (
 	"upspin.io/log"
 )
 
-var net = flag.String("net", "tcp", "network name for listen address")
+var network = flag.String("net", "service", "network name for listen address")
+var addr = flag.String("addr", "upspin", "network listen address")
 var debug = flag.Int("debug", 0, "9P debug level")
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "Usage: %s <listen address>\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "Usage: %s\n", os.Args[0])
 	flag.PrintDefaults()
 }
 
@@ -27,7 +28,7 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 
-	if flag.NArg() != 1 {
+	if flag.NArg() != 0 {
 		usage()
 		os.Exit(2)
 	}
@@ -35,5 +36,5 @@ func main() {
 	if err != nil {
 		log.Debug.Fatal(err)
 	}
-	do(cfg, *net, flag.Arg(0), *debug)
+	do(cfg, *network, *addr, *debug)
 }
