@@ -20,25 +20,25 @@ import (
 	"github.com/rminnich/go9p"
 )
 
-type Srv struct {
+type upspinFS struct {
 	go9p.Srv
-	cli   upspin.Client
-	users map[upspin.UserName]bool
+	client   upspin.Client
+	userDirs map[upspin.UserName]bool
 }
 
-var _ go9p.SrvFidOps = (*Srv)(nil)
-var _ go9p.SrvReqOps = (*Srv)(nil)
+var _ go9p.SrvFidOps = (*upspinFS)(nil)
+var _ go9p.SrvReqOps = (*upspinFS)(nil)
 
-func NewSrv(cfg upspin.Config, debug int) *Srv {
+func newUpspinFS(cfg upspin.Config, debug int) *upspinFS {
 	transports.Init(cfg)
-	return &Srv{
-		Srv:   go9p.Srv{Debuglevel: debug},
-		cli:   client.New(cfg),
-		users: map[upspin.UserName]bool{cfg.UserName(): true},
+	return &upspinFS{
+		Srv:      go9p.Srv{Debuglevel: debug},
+		client:   client.New(cfg),
+		userDirs: map[upspin.UserName]bool{cfg.UserName(): true},
 	}
 }
 
-func (srv *Srv) Attach(req *go9p.SrvReq) {
+func (f *upspinFS) Attach(req *go9p.SrvReq) {
 	if req.Afid != nil {
 		req.RespondError(go9p.Enoauth)
 		return
@@ -47,7 +47,7 @@ func (srv *Srv) Attach(req *go9p.SrvReq) {
 	req.RespondRattach(&rootQid)
 }
 
-func (srv *Srv) Walk(req *go9p.SrvReq) {
+func (f *upspinFS) Walk(req *go9p.SrvReq) {
 	fid := req.Fid.Aux.(*Fid)
 	tc := req.Tc
 
@@ -68,7 +68,7 @@ func (srv *Srv) Walk(req *go9p.SrvReq) {
 		} else {
 			p = path + "/" + tc.Wname[i]
 		}
-		ent, err := srv.cli.Lookup(upspin.PathName(p), false)
+		ent, err := f.client.Lookup(upspin.PathName(p), false)
 		if err != nil {
 			if i == 0 {
 				req.RespondError(go9p.Enoent)
@@ -77,7 +77,7 @@ func (srv *Srv) Walk(req *go9p.SrvReq) {
 			break
 		}
 		if path == "" {
-			srv.users[upspin.UserName(tc.Wname[i])] = true
+			f.userDirs[upspin.UserName(tc.Wname[i])] = true
 		}
 		wqids[i] = *dir2Qid(ent)
 		path = p
@@ -88,14 +88,14 @@ func (srv *Srv) Walk(req *go9p.SrvReq) {
 	req.RespondRwalk(wqids[0:i])
 }
 
-func (srv *Srv) Open(req *go9p.SrvReq) {
+func (f *upspinFS) Open(req *go9p.SrvReq) {
 	fid := req.Fid.Aux.(*Fid)
 	tc := req.Tc
 
 	if fid.path == "" {
 		count := 0
-		for user, _ := range srv.users {
-			entry, err := srv.cli.Lookup(upspin.PathName(user), false)
+		for user, _ := range f.userDirs {
+			entry, err := f.client.Lookup(upspin.PathName(user), false)
 			if err != nil {
 				req.RespondError(err)
 			}
@@ -109,7 +109,7 @@ func (srv *Srv) Open(req *go9p.SrvReq) {
 		return
 	}
 	if fid.entry.IsDir() {
-		dirContents, err := srv.cli.Glob(string(fid.path) + "/*")
+		dirContents, err := f.client.Glob(string(fid.path) + "/*")
 		if err != nil {
 			req.RespondError(err)
 		}
@@ -125,9 +125,9 @@ func (srv *Srv) Open(req *go9p.SrvReq) {
 		var err error
 		switch tc.Mode & 3 {
 		case go9p.OWRITE, go9p.ORDWR:
-			fid.file, err = Writable(srv.cli, fid.path, tc.Mode&go9p.OTRUNC != 0)
+			fid.file, err = Writable(f.client, fid.path, tc.Mode&go9p.OTRUNC != 0)
 		default:
-			fid.file, err = srv.cli.Open(fid.path)
+			fid.file, err = f.client.Open(fid.path)
 		}
 		if err != nil {
 			req.RespondError(err)
@@ -137,12 +137,12 @@ func (srv *Srv) Open(req *go9p.SrvReq) {
 	req.RespondRopen(dir2Qid(fid.entry), 0)
 }
 
-func (srv *Srv) Create(req *go9p.SrvReq) {
+func (f *upspinFS) Create(req *go9p.SrvReq) {
 	fid := req.Fid.Aux.(*Fid)
 	tc := req.Tc
 
 	path := upspin.PathName(string(fid.path) + "/" + tc.Name)
-	if _, err := srv.cli.Lookup(path, false); err == nil {
+	if _, err := f.client.Lookup(path, false); err == nil {
 		req.RespondError(go9p.Eexist)
 		return
 	}
@@ -152,7 +152,7 @@ func (srv *Srv) Create(req *go9p.SrvReq) {
 	var file upspin.File
 	switch {
 	case tc.Perm&go9p.DMDIR != 0:
-		entry, err = srv.cli.MakeDirectory(path)
+		entry, err = f.client.MakeDirectory(path)
 	case tc.Perm&badPerms != 0:
 		req.RespondError(&go9p.Error{"not implemented", go9p.EIO})
 		return
@@ -162,7 +162,7 @@ func (srv *Srv) Create(req *go9p.SrvReq) {
 			Attr:     upspin.AttrIncomplete,
 			Sequence: upspin.SeqIgnore,
 		}
-		file, err = Writable(srv.cli, path, true)
+		file, err = Writable(f.client, path, true)
 	}
 	if err != nil {
 		req.RespondError(err)
@@ -174,7 +174,7 @@ func (srv *Srv) Create(req *go9p.SrvReq) {
 	req.RespondRcreate(dir2Qid(fid.entry), 0)
 }
 
-func (srv *Srv) Read(req *go9p.SrvReq) {
+func (f *upspinFS) Read(req *go9p.SrvReq) {
 	fid := req.Fid.Aux.(*Fid)
 	tc := req.Tc
 	rc := req.Rc
@@ -222,7 +222,7 @@ done:
 	req.Respond()
 }
 
-func (srv *Srv) Write(req *go9p.SrvReq) {
+func (f *upspinFS) Write(req *go9p.SrvReq) {
 	fid := req.Fid.Aux.(*Fid)
 	tc := req.Tc
 
@@ -234,25 +234,25 @@ func (srv *Srv) Write(req *go9p.SrvReq) {
 	req.RespondRwrite(uint32(n))
 }
 
-func (srv *Srv) Clunk(req *go9p.SrvReq) {
+func (f *upspinFS) Clunk(req *go9p.SrvReq) {
 	req.RespondRclunk()
 }
 
-func (srv *Srv) Remove(req *go9p.SrvReq) {
+func (f *upspinFS) Remove(req *go9p.SrvReq) {
 	fid := req.Fid.Aux.(*Fid)
-	if err := srv.cli.Delete(fid.path); err != nil {
+	if err := f.client.Delete(fid.path); err != nil {
 		req.RespondError(err)
 		return
 	}
 	req.RespondRremove()
 }
 
-func (srv *Srv) Stat(req *go9p.SrvReq) {
+func (f *upspinFS) Stat(req *go9p.SrvReq) {
 	fid := req.Fid.Aux.(*Fid)
 	req.RespondRstat(dir2Dir(string(fid.path), fid.entry))
 }
 
-func (srv *Srv) Wstat(req *go9p.SrvReq) {
+func (f *upspinFS) Wstat(req *go9p.SrvReq) {
 	fid := req.Fid.Aux.(*Fid)
 	dir := &req.Tc.Dir
 
@@ -264,15 +264,15 @@ func (srv *Srv) Wstat(req *go9p.SrvReq) {
 			// filename is relative to source directory
 			destpath = upspin.PathName(path.Join(fiddir, dir.Name))
 		}
-		if _, err := srv.cli.Lookup(destpath, false); err == nil {
+		if _, err := f.client.Lookup(destpath, false); err == nil {
 			req.RespondError(go9p.Eexist)
 			return
 		}
-		if err := srv.cli.Rename(fid.path, destpath); err != nil {
+		if err := f.client.Rename(fid.path, destpath); err != nil {
 			req.RespondError(err)
 			return
 		}
-		entry, err := srv.cli.Lookup(destpath, false)
+		entry, err := f.client.Lookup(destpath, false)
 		if err != nil {
 			req.RespondError(err)
 			return
@@ -285,7 +285,7 @@ func (srv *Srv) Wstat(req *go9p.SrvReq) {
 	req.RespondError(go9p.Enotimpl)
 }
 
-func (srv *Srv) FidDestroy(sfid *go9p.SrvFid) {
+func (f *upspinFS) FidDestroy(sfid *go9p.SrvFid) {
 	if sfid.Aux == nil {
 		return
 	}
@@ -366,7 +366,7 @@ var rootQid = go9p.Qid{
 }
 
 func do(cfg upspin.Config, net, addr string, debug int) {
-	srv := NewSrv(cfg, debug)
+	srv := newUpspinFS(cfg, debug)
 	if !srv.Start(srv) {
 		log.Debug.Fatal("Srv start failed")
 	}
