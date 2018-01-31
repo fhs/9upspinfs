@@ -283,6 +283,21 @@ func TestFile(t *testing.T) {
 	remove(t, testDir)
 }
 
+func TestWalkAfterCreate(t *testing.T) {
+	testDir := mkTestDir(t, "testfile")
+	fn := filepath.Join(testDir, "file")
+	f, err := testConfig.clnt.FCreate(fn, 0600, go9p.OWRITE)
+	if err != nil {
+		fatal(t, "Create failed: %v", err)
+	}
+	if _, err := testConfig.clnt.FWalk(fn); err != nil {
+		fatal(t, "FWalk failed after create: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		fatal(t, "Close failed: %v", err)
+	}
+}
+
 func rename(src, dst string) error {
 	d := go9p.NewWstatDir()
 	fid, err := testConfig.clnt.FWalk(src)

@@ -160,12 +160,11 @@ func (f *upspinFS) Create(req *srv.Req) {
 		req.RespondError(&go9p.Error{"not implemented", go9p.EIO})
 		return
 	default:
-		entry = &upspin.DirEntry{
-			Name:     path,
-			Attr:     upspin.AttrIncomplete,
-			Sequence: upspin.SeqIgnore,
+		// Write an empty file in case Walk happend before file is closed.
+		entry, err = f.client.Put(path, []byte{})
+		if err == nil {
+			file, err = Writable(f.client, path, true)
 		}
-		file, err = Writable(f.client, path, true)
 	}
 	if err != nil {
 		req.RespondError(err)
