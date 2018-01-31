@@ -17,37 +17,38 @@ import (
 	"upspin.io/transports"
 	"upspin.io/upspin"
 
-	"github.com/rminnich/go9p"
+	go9p "github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/srv"
 )
 
 type upspinFS struct {
-	go9p.Srv
+	srv.Srv
 	client   upspin.Client
 	userDirs map[upspin.UserName]bool
 }
 
-var _ go9p.SrvFidOps = (*upspinFS)(nil)
-var _ go9p.SrvReqOps = (*upspinFS)(nil)
+var _ srv.FidOps = (*upspinFS)(nil)
+var _ srv.ReqOps = (*upspinFS)(nil)
 
 func newUpspinFS(cfg upspin.Config, debug int) *upspinFS {
 	transports.Init(cfg)
 	return &upspinFS{
-		Srv:      go9p.Srv{Debuglevel: debug},
+		Srv:      srv.Srv{Debuglevel: debug},
 		client:   client.New(cfg),
 		userDirs: map[upspin.UserName]bool{cfg.UserName(): true},
 	}
 }
 
-func (f *upspinFS) Attach(req *go9p.SrvReq) {
+func (f *upspinFS) Attach(req *srv.Req) {
 	if req.Afid != nil {
-		req.RespondError(go9p.Enoauth)
+		req.RespondError(srv.Enoauth)
 		return
 	}
 	req.Fid.Aux = new(Fid)
 	req.RespondRattach(&rootQid)
 }
 
-func (f *upspinFS) Walk(req *go9p.SrvReq) {
+func (f *upspinFS) Walk(req *srv.Req) {
 	fid := req.Fid.Aux.(*Fid)
 	tc := req.Tc
 
@@ -71,7 +72,7 @@ func (f *upspinFS) Walk(req *go9p.SrvReq) {
 		ent, err := f.client.Lookup(upspin.PathName(p), false)
 		if err != nil {
 			if i == 0 {
-				req.RespondError(go9p.Enoent)
+				req.RespondError(srv.Enoent)
 				return
 			}
 			break
@@ -88,7 +89,7 @@ func (f *upspinFS) Walk(req *go9p.SrvReq) {
 	req.RespondRwalk(wqids[0:i])
 }
 
-func (f *upspinFS) Open(req *go9p.SrvReq) {
+func (f *upspinFS) Open(req *srv.Req) {
 	fid := req.Fid.Aux.(*Fid)
 	tc := req.Tc
 
@@ -137,13 +138,13 @@ func (f *upspinFS) Open(req *go9p.SrvReq) {
 	req.RespondRopen(dir2Qid(fid.entry), 0)
 }
 
-func (f *upspinFS) Create(req *go9p.SrvReq) {
+func (f *upspinFS) Create(req *srv.Req) {
 	fid := req.Fid.Aux.(*Fid)
 	tc := req.Tc
 
 	path := upspin.PathName(string(fid.path) + "/" + tc.Name)
 	if _, err := f.client.Lookup(path, false); err == nil {
-		req.RespondError(go9p.Eexist)
+		req.RespondError(srv.Eexist)
 		return
 	}
 	const badPerms = go9p.DMSYMLINK | go9p.DMLINK | go9p.DMNAMEDPIPE | go9p.DMDEVICE
@@ -174,7 +175,7 @@ func (f *upspinFS) Create(req *go9p.SrvReq) {
 	req.RespondRcreate(dir2Qid(fid.entry), 0)
 }
 
-func (f *upspinFS) Read(req *go9p.SrvReq) {
+func (f *upspinFS) Read(req *srv.Req) {
 	fid := req.Fid.Aux.(*Fid)
 	tc := req.Tc
 	rc := req.Rc
@@ -222,7 +223,7 @@ done:
 	req.Respond()
 }
 
-func (f *upspinFS) Write(req *go9p.SrvReq) {
+func (f *upspinFS) Write(req *srv.Req) {
 	fid := req.Fid.Aux.(*Fid)
 	tc := req.Tc
 
@@ -234,11 +235,11 @@ func (f *upspinFS) Write(req *go9p.SrvReq) {
 	req.RespondRwrite(uint32(n))
 }
 
-func (f *upspinFS) Clunk(req *go9p.SrvReq) {
+func (f *upspinFS) Clunk(req *srv.Req) {
 	req.RespondRclunk()
 }
 
-func (f *upspinFS) Remove(req *go9p.SrvReq) {
+func (f *upspinFS) Remove(req *srv.Req) {
 	fid := req.Fid.Aux.(*Fid)
 	if err := f.client.Delete(fid.path); err != nil {
 		req.RespondError(err)
@@ -247,12 +248,12 @@ func (f *upspinFS) Remove(req *go9p.SrvReq) {
 	req.RespondRremove()
 }
 
-func (f *upspinFS) Stat(req *go9p.SrvReq) {
+func (f *upspinFS) Stat(req *srv.Req) {
 	fid := req.Fid.Aux.(*Fid)
 	req.RespondRstat(dir2Dir(string(fid.path), fid.entry))
 }
 
-func (f *upspinFS) Wstat(req *go9p.SrvReq) {
+func (f *upspinFS) Wstat(req *srv.Req) {
 	fid := req.Fid.Aux.(*Fid)
 	dir := &req.Tc.Dir
 
@@ -265,7 +266,7 @@ func (f *upspinFS) Wstat(req *go9p.SrvReq) {
 			destpath = upspin.PathName(path.Join(fiddir, dir.Name))
 		}
 		if _, err := f.client.Lookup(destpath, false); err == nil {
-			req.RespondError(go9p.Eexist)
+			req.RespondError(srv.Eexist)
 			return
 		}
 		if err := f.client.Rename(fid.path, destpath); err != nil {
@@ -282,10 +283,10 @@ func (f *upspinFS) Wstat(req *go9p.SrvReq) {
 		req.RespondRwstat()
 		return
 	}
-	req.RespondError(go9p.Enotimpl)
+	req.RespondError(srv.Enotimpl)
 }
 
-func (f *upspinFS) FidDestroy(sfid *go9p.SrvFid) {
+func (f *upspinFS) FidDestroy(sfid *srv.Fid) {
 	if sfid.Aux == nil {
 		return
 	}

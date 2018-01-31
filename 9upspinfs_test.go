@@ -12,11 +12,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/user"
 	"path/filepath"
 	rtdebug "runtime/debug"
 	"testing"
 
-	"github.com/rminnich/go9p"
+	go9p "github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/clnt"
 	"upspin.io/bind"
 	"upspin.io/config"
 	"upspin.io/errors"
@@ -34,14 +36,14 @@ type TestUser upspin.UserName
 var _ go9p.User = TestUser("")
 
 func (tu TestUser) Name() string               { return string(tu) }
-func (tu TestUser) Id() int                    { return 0 }
+func (tu TestUser) Id() int                    { return -1 }
 func (tu TestUser) Groups() []go9p.Group       { return nil }
 func (tu TestUser) IsMember(g go9p.Group) bool { return false }
 
 var testConfig struct {
 	root string
 	cfg  upspin.Config
-	clnt *go9p.Clnt
+	clnt *clnt.Clnt
 }
 
 const (
@@ -115,26 +117,31 @@ func testSetup(userName upspin.UserName) upspin.Config {
 
 func mount() error {
 	// Set up a user config.
-	user := upspin.UserName("user1@google.com")
-	cfg := testSetup(user)
+	uname := upspin.UserName("user1@google.com")
+	cfg := testSetup(uname)
 	testConfig.cfg = cfg
 
 	// start server
 	go do(cfg, "tcp", serverAddr, *debug)
 
 	// The server may take some time to start up
-	var clnt *go9p.Clnt
+	var client *clnt.Clnt
 	var err error
+	cur, err := user.Current()
+	if err != nil {
+		return err
+	}
+	user9p := TestUser(cur.Username)
 	for i := 0; i < 16; i++ {
-		if clnt, err = go9p.Mount("tcp", serverAddr, "", 8192, TestUser(cfg.UserName())); err == nil {
+		if client, err = clnt.Mount("tcp", serverAddr, "", 8192, user9p); err == nil {
 			break
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("Connect failed after many tries ...")
+		return fmt.Errorf("Connect failed after many tries: %v", err)
 	}
-	testConfig.clnt = clnt
-	testConfig.root = string(user) + "/"
+	testConfig.clnt = client
+	testConfig.root = string(uname) + "/"
 	return nil
 }
 
@@ -145,7 +152,6 @@ func cleanup() {
 func TestMain(m *testing.M) {
 	if err := mount(); err != nil {
 		fmt.Fprintf(os.Stderr, "startServer failed: %s\n", err)
-		cleanup()
 		os.Exit(1)
 	}
 	rv := m.Run()
@@ -169,7 +175,7 @@ func randomBytes(t *testing.T, len int) []byte {
 	return buf
 }
 
-func writeFile(t *testing.T, fn string, buf []byte) *go9p.File {
+func writeFile(t *testing.T, fn string, buf []byte) *clnt.File {
 	f, err := testConfig.clnt.FCreate(fn, 0600, go9p.OWRITE)
 	if err != nil {
 		// file already exists, so try to open it
@@ -277,28 +283,14 @@ func TestFile(t *testing.T) {
 	remove(t, testDir)
 }
 
-func nullDir(d *go9p.Dir) {
-	null := go9p.Dir{
-		Type:   ^uint16(0),
-		Dev:    ^uint32(0),
-		Qid:    go9p.Qid{Type: ^uint8(0), Version: ^uint32(0), Path: ^uint64(0)},
-		Mode:   ^uint32(0),
-		Atime:  ^uint32(0),
-		Mtime:  ^uint32(0),
-		Length: ^uint64(0),
-	}
-	*d = null
-}
-
 func rename(src, dst string) error {
-	var d go9p.Dir
-	nullDir(&d)
+	d := go9p.NewWstatDir()
 	fid, err := testConfig.clnt.FWalk(src)
 	if err != nil {
 		return err
 	}
 	d.Name = dst
-	return testConfig.clnt.Wstat(fid, &d)
+	return testConfig.clnt.Wstat(fid, d)
 }
 
 // TestRename tests renaming a file.
