@@ -9,13 +9,18 @@ import (
 	"fmt"
 	"os"
 
+	"upspin.io/cmd/cacheserver/cacheutil"
 	"upspin.io/config"
 	"upspin.io/flags"
 	"upspin.io/log"
+	"upspin.io/transports"
+	"upspin.io/version"
 )
 
-var network = flag.String("net", "service", "network name for listen address")
-var addr = flag.String("addr", "upspin", "network listen address")
+const cmdName = "9upspinfs"
+
+var _9pnet = flag.String("9pnet", "service", "network name for listen address")
+var _9paddr = flag.String("9paddr", "upspin", "network listen address")
 var debug = flag.Int("debug", 0, "9P debug level")
 
 func usage() {
@@ -25,15 +30,35 @@ func usage() {
 
 func main() {
 	flag.Usage = usage
-	flag.Parse()
+	flags.Parse(flags.Server, "cachedir", "cachesize", "prudent", "version")
+
+	if flags.Version {
+		fmt.Print(version.Version())
+		return
+	}
+
+	// Normal setup, get configuration from file and push user cache onto config.
+	cfg, err := config.FromFile(flags.Config)
+	if err != nil {
+		log.Debug.Fatal(err)
+	}
+
+	// Set any flags contained in the config.
+	if err := config.SetFlagValues(cfg, cmdName); err != nil {
+		log.Fatalf("%s: %s", cmdName, err)
+	}
+
+	transports.Init(cfg)
+
+	// Start the cacheserver if needed.
+	if cacheutil.Start(cfg) {
+		// Using a cacheserver, adjust cache size for upspinfs down.
+		flags.CacheSize = flags.CacheSize / 10
+	}
 
 	if flag.NArg() != 0 {
 		usage()
 		os.Exit(2)
 	}
-	cfg, err := config.FromFile(flags.Config)
-	if err != nil {
-		log.Debug.Fatal(err)
-	}
-	do(cfg, *network, *addr, *debug)
+	do(cfg, *_9pnet, *_9paddr, *debug)
 }

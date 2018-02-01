@@ -15,7 +15,6 @@ import (
 
 	"upspin.io/client"
 	"upspin.io/log"
-	"upspin.io/transports"
 	"upspin.io/upspin"
 
 	plan9 "9fans.net/go/plan9/client"
@@ -33,7 +32,6 @@ var _ srv.FidOps = (*upspinFS)(nil)
 var _ srv.ReqOps = (*upspinFS)(nil)
 
 func newUpspinFS(cfg upspin.Config, debug int) *upspinFS {
-	transports.Init(cfg)
 	return &upspinFS{
 		Srv:      srv.Srv{Debuglevel: debug},
 		client:   client.New(cfg),

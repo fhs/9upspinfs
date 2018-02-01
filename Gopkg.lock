@@ -74,6 +74,7 @@
     "client",
     "client/clientutil",
     "client/file",
+    "cmd/cacheserver/cacheutil",
     "config",
     "dir/inprocess",
     "dir/remote",
@@ -108,13 +109,14 @@
     "upspin",
     "upspin/proto",
     "user",
-    "valid"
+    "valid",
+    "version"
   ]
   revision = "daa96a4688949f089528920b9c1950646e892a26"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "489512fe279281cf92d26e7b73ff34a028de8802eefde7e86bb1d3ffa23672ed"
+  inputs-digest = "81614c07e80ba418d2393fcf566b27b67f88635053aa0e05e3e9ffe593d69eba"
   solver-name = "gps-cdcl"
   solver-version = 1
