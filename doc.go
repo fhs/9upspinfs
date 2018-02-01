@@ -62,6 +62,9 @@ To listen on TCP:
 If you have Plan9Port (https://9fans.github.io/plan9port/):
 
 	9upspinfs &	# posts service to p9p namespace directory
+	# mount using v9fs
+	mount -t 9p $(namespace)/acme /mnt/upspin -o trans=unix,uname=$USER
+	# or mount using fuse
 	9pfuse $(namespace)/upspin /mnt/upspin
 
 But you're better off using upspinfs
@@ -70,6 +73,6 @@ But you're better off using upspinfs
 On Plan 9:
 
 	9upspinfs &
-	mount /srv/upspin /mnt/upspin
+	mount /srv/upspin /n/upspin
 */
 package main
