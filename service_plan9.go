@@ -32,6 +32,8 @@ type ServiceConn struct {
 	srvf *os.File
 }
 
+// NewServiceConn returns a connection that has been posted
+// to a Plan 9 service file (in /srv).
 func NewServiceConn(name string) (net.Conn, error) {
 	var fd [2]int
 	if err := syscall.Pipe(fd[:]); err != nil {

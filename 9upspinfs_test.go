@@ -288,13 +288,13 @@ func TestWalkAfterCreate(t *testing.T) {
 	fn := filepath.Join(testDir, "file")
 	f, err := testConfig.clnt.FCreate(fn, 0600, go9p.OWRITE)
 	if err != nil {
-		fatal(t, "Create failed: %v", err)
+		fatalf(t, "Create failed: %v", err)
 	}
 	if _, err := testConfig.clnt.FWalk(fn); err != nil {
-		fatal(t, "FWalk failed after create: %v", err)
+		fatalf(t, "FWalk failed after create: %v", err)
 	}
 	if err := f.Close(); err != nil {
-		fatal(t, "Close failed: %v", err)
+		fatalf(t, "Close failed: %v", err)
 	}
 }
 

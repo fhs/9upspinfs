@@ -95,7 +95,7 @@ func (f *upspinFS) Open(req *srv.Req) {
 
 	if fid.path == "" {
 		count := 0
-		for user, _ := range f.userDirs {
+		for user := range f.userDirs {
 			entry, err := f.client.Lookup(upspin.PathName(user), false)
 			if err != nil {
 				req.RespondError(err)
@@ -158,7 +158,7 @@ func (f *upspinFS) Create(req *srv.Req) {
 		req.RespondError(&go9p.Error{"not implemented", go9p.EIO})
 		return
 	default:
-		// Write an empty file in case Walk happend before file is closed.
+		// Write an empty file in case Walk happened before file is closed.
 		entry, err = f.client.Put(path, []byte{})
 		if err == nil {
 			file, err = Writable(f.client, path, true)
@@ -378,11 +378,10 @@ func do(cfg upspin.Config, net, addr string, debug int) {
 				log.Debug.Fatal("DialService failed: %v", err)
 			}
 			srv.NewConn(conn)
-			select {}
-			// We only get here when Go runtime detects deadlock.
+			// Wait for Go runtime to detect deadlock.
 			// Go9p does not provide a way detect when the goroutines
 			// started by srv.NewConn have terminated.
-			return
+			select {}
 		default:
 			net = "unix"
 			addr = plan9.Namespace() + "/" + addr

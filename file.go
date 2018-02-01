@@ -18,6 +18,9 @@ import (
 // In the tests, we cut it down to manageable size for overflow checking.
 var maxInt = int64(^uint(0) >> 1)
 
+// File is a simple implementation of upspin.File.
+// It always keeps the whole file in memory under the assumption
+// that it is encrypted and must be read and written atomically.
 type File struct {
 	name     upspin.PathName // Full path name.
 	offset   int64           // File location for next read or write operation. Constrained to <= maxInt.
