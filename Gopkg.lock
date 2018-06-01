@@ -8,7 +8,7 @@
     "plan9",
     "plan9/client"
   ]
-  revision = "f3da003977a315afefd8b0085cc48356fd2308a3"
+  revision = "50ea98054622985957ed42e71923431da064026a"
 
 [[projects]]
   branch = "master"
@@ -30,7 +30,7 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["hkdf"]
-  revision = "1875d0a70c90e57f11972aefd42276df65e895b9"
+  revision = "5ba7f63082460102a45837dbd1827e10f9479ac0"
 
 [[projects]]
   branch = "master"
@@ -42,6 +42,8 @@
     "internal",
     "internal/colltab",
     "internal/gen",
+    "internal/language",
+    "internal/language/compact",
     "internal/tag",
     "internal/triegen",
     "internal/ucd",
@@ -56,13 +58,13 @@
     "unicode/rangetable",
     "width"
   ]
-  revision = "e19ae1496984b1c655b8044a65c0300a3c878dd3"
+  revision = "5c1cf69b5978e5a34c5f9ba09a83e56acc4b7877"
 
 [[projects]]
-  branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [[projects]]
   branch = "master"
