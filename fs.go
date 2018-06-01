@@ -268,11 +268,7 @@ func (f *upspinFS) Wstat(req *srv.Req) {
 			req.RespondError(srv.Eexist)
 			return
 		}
-		if err := f.client.Rename(fid.path, destpath); err != nil {
-			req.RespondError(err)
-			return
-		}
-		entry, err := f.client.Lookup(destpath, false)
+		entry, err := f.client.Rename(fid.path, destpath)
 		if err != nil {
 			req.RespondError(err)
 			return

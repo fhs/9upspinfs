@@ -11,10 +11,10 @@
   revision = "f3da003977a315afefd8b0085cc48356fd2308a3"
 
 [[projects]]
+  branch = "master"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
-  version = "v1.0.0"
+  revision = "3a3da3a4e26776cc22a79ef46d5d58477532dede"
 
 [[projects]]
   branch = "master"
@@ -112,7 +112,7 @@
     "valid",
     "version"
   ]
-  revision = "daa96a4688949f089528920b9c1950646e892a26"
+  revision = "63f1073c7a3a0fe6162849630916771c15ed80e9"
 
 [solve-meta]
   analyzer-name = "dep"
