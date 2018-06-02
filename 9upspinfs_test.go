@@ -326,6 +326,56 @@ func TestRename(t *testing.T) {
 	remove(t, testDir)
 }
 
+// TestMultiWrites tests concurrent writes.
+func TestMultiWrites(t *testing.T) {
+	testDir := mkTestDir(t, "testwrite")
+
+	fn := filepath.Join(testDir, "file")
+	f1, err := testConfig.clnt.FCreate(fn, 0600, go9p.OWRITE)
+	if err != nil {
+		fatalf(t, "Create failed: %v", err)
+	}
+	f2, err := testConfig.clnt.FOpen(fn, go9p.OWRITE)
+	if err != nil {
+		f1.Close()
+		fatalf(t, "Open failed: %v", err)
+	}
+	buf := []byte("hello world\n")
+	off := len(buf) / 2
+	n, err := f1.Writen(buf[off:], uint64(off))
+	if err != nil {
+		f1.Close()
+		f2.Close()
+		fatal(t, err)
+	}
+	if n != len(buf[off:]) {
+		f1.Close()
+		f2.Close()
+		fatalf(t, "%s: wrote %d bytes, expected %d", fn, n, len(buf[off:]))
+	}
+	n, err = f2.Writen(buf[:off], 0)
+	if err != nil {
+		f1.Close()
+		f2.Close()
+		fatal(t, err)
+	}
+	if n != len(buf[:off]) {
+		f1.Close()
+		f2.Close()
+		fatalf(t, "%s: wrote %d bytes, expected %d", fn, n, len(buf[:off]))
+	}
+	if err := f2.Close(); err != nil {
+		f1.Close()
+		fatalf(t, "Closing f2 failed: %v\n", err)
+	}
+	if err := f1.Close(); err != nil {
+		fatalf(t, "Closing f1 failed: %v\n", err)
+	}
+	readAndCheckContentsOrDie(t, fn, buf)
+	remove(t, fn)
+	remove(t, testDir)
+}
+
 func fatal(t *testing.T, args ...interface{}) {
 	t.Log(fmt.Sprintln(args...))
 	t.Log(string(rtdebug.Stack()))

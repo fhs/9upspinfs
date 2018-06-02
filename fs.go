@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 
 	"upspin.io/client"
 	"upspin.io/log"
@@ -24,8 +25,9 @@ import (
 
 type upspinFS struct {
 	srv.Srv
-	client   upspin.Client
-	userDirs map[upspin.UserName]bool
+	client    upspin.Client
+	userDirs  map[upspin.UserName]bool
+	fileCache *fileCache
 }
 
 var _ srv.FidOps = (*upspinFS)(nil)
@@ -36,6 +38,9 @@ func newUpspinFS(cfg upspin.Config, debug int) *upspinFS {
 		Srv:      srv.Srv{Debuglevel: debug},
 		client:   client.New(cfg),
 		userDirs: map[upspin.UserName]bool{cfg.UserName(): true},
+		fileCache: &fileCache{
+			m: make(map[upspin.PathName]*File),
+		},
 	}
 }
 
@@ -126,7 +131,7 @@ func (f *upspinFS) Open(req *srv.Req) {
 		var err error
 		switch tc.Mode & 3 {
 		case go9p.OWRITE, go9p.ORDWR:
-			fid.file, err = Writable(f.client, fid.path, tc.Mode&go9p.OTRUNC != 0)
+			fid.file, err = f.fileCache.Writable(f.client, fid.path, tc.Mode&go9p.OTRUNC != 0)
 		default:
 			fid.file, err = f.client.Open(fid.path)
 		}
@@ -161,7 +166,7 @@ func (f *upspinFS) Create(req *srv.Req) {
 		// Write an empty file in case Walk happened before file is closed.
 		entry, err = f.client.Put(path, []byte{})
 		if err == nil {
-			file, err = Writable(f.client, path, true)
+			file, err = f.fileCache.Writable(f.client, path, true)
 		}
 	}
 	if err != nil {
@@ -287,7 +292,7 @@ func (f *upspinFS) FidDestroy(sfid *srv.Fid) {
 	}
 	fid := sfid.Aux.(*Fid)
 	if fid.file != nil {
-		fid.file.Close()
+		f.fileCache.Close(fid.file)
 	}
 	// TODO: delete file if ORCLOSE create mode?
 }
@@ -386,4 +391,44 @@ func do(cfg upspin.Config, net, addr string, debug int) {
 	if err := srv.StartNetListener(net, addr); err != nil {
 		log.Debug.Fatal(err)
 	}
+}
+
+// FileCache stores a mapping of path name to the open file used for writing.
+// This is used to implement concurrent writes.
+type fileCache struct {
+	m map[upspin.PathName]*File
+	sync.Mutex
+}
+
+func (fc *fileCache) Writable(client upspin.Client, name upspin.PathName, truncate bool) (*File, error) {
+	fc.Lock()
+	defer fc.Unlock()
+	file, ok := fc.m[name]
+	if ok {
+		return file, nil
+	}
+	file, err := Writable(client, name, truncate)
+	if err != nil {
+		return nil, err
+	}
+	fc.m[name] = file
+	return file, nil
+}
+
+func (fc *fileCache) Close(file upspin.File) error {
+	fc.Lock()
+	defer fc.Unlock()
+
+	name := file.Name()
+	ff, ok := fc.m[name]
+	if !ok || ff != file {
+		// Some possibilities:
+		// (1) The file was not opened for writing.
+		// (2) The file is already closed by a Tcluck of some other fid
+		//	that pointed to the same file.
+		return file.Close()
+	}
+	err := file.Close()
+	delete(fc.m, name)
+	return err
 }
