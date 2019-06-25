@@ -1,0 +1,15 @@
+9fans.net/go v0.0.0-20180426154737-50ea98054622 h1:qd4awIHXQOfnhAYFOpAj3jfvonTbgjXWuMBqtdACl58=
+9fans.net/go v0.0.0-20180426154737-50ea98054622/go.mod h1:diCsxrliIURU9xsYtjCp5AbpQKqdhKmf0ujWDUSkfoY=
+github.com/golang/protobuf v1.1.1-0.20180522224251-3a3da3a4e267 h1:Q1UqmexKs1vQx3iOjdtrwxQhX+WfTSnYktdIujPlGsU=
+github.com/golang/protobuf v1.1.1-0.20180522224251-3a3da3a4e267/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/lionkov/go9p v0.0.0-20160331031206-9fba78810500 h1:IcEJQI21XUKxA5orQSK3kVRSQPxPx7QVWBsPnuE35aE=
+github.com/lionkov/go9p v0.0.0-20160331031206-9fba78810500/go.mod h1:Nbrxd4FljESFB/bUvzT5xm1VNO2VfzMKSIv4L++4J4U=
+golang.org/x/crypto v0.0.0-20180531191117-5ba7f6308246 h1:MZnJRoCTAuixTXohPACCXwD9zfTy41GBwmbTYq+ebCQ=
+golang.org/x/crypto v0.0.0-20180531191117-5ba7f6308246/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
+golang.org/x/text v0.3.1-0.20180511172408-5c1cf69b5978 h1:Woq0dzoucymkfNZxA4xs8Tu5YQZOnFklbuIaaThN+Gs=
+golang.org/x/text v0.3.1-0.20180511172408-5c1cf69b5978/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/yaml.v2 v2.2.1 h1:mUhvW9EsL+naU5Q3cakzfE91YhliOondGd6ZrsDBHQE=
+gopkg.in/yaml.v2 v2.2.1/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
+upspin.io v0.0.0-20180517055408-63f1073c7a3a h1:SmRV4ptPhupMzU2o5cWgX9FmOwGLP135Z7jihhmvgtk=
+upspin.io v0.0.0-20180517055408-63f1073c7a3a/go.mod h1:4hdXTXkMPXxzbiw/sultoifpccn98hChAFvrU19V2ug=
