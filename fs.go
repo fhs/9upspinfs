@@ -376,7 +376,7 @@ func do(cfg upspin.Config, net, addr string, debug int) {
 		case "plan9":
 			conn, err := NewServiceConn(addr)
 			if err != nil {
-				log.Debug.Fatal("DialService failed: %v", err)
+				log.Debug.Fatalf("DialService failed: %v", err)
 			}
 			srv.NewConn(conn)
 			// Wait for Go runtime to detect deadlock.
